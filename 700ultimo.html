@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>bot de movilidad Combuses</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1663ff;
+      --primary-dark: #0d4fd6;
+      --secondary: #6c757d;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --border: #dee2e6;
+      --shadow: 0 4px 20px rgba(0,0,0,.08);
+      --radius: 8px;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f4f5fb;
+      margin: 0;
+      padding: 15px;
+      color: #333;
+      line-height: 1.4;
+    }
+    
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: var(--radius);
+      max-width: 100%;
+      margin: auto;
+      box-shadow: var(--shadow);
+    }
+    
+    h2 {
+      margin-top: 0;
+      color: var(--dark);
+      font-weight: 600;
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+    }
+
+    /* ======================================================
+          BARRA FIJA (botones + pestañas + filtros)
+    ====================================================== */
+    .top-sticky {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      background: white;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* ======================================================
+           DISEÑO ORIGINAL (SIN CAMBIAR LÓGICA)
+    ====================================================== */
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .input-group {
+      margin-bottom: 0;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--dark);
+      font-size: 0.9rem;
+    }
+    
+    input, select, button {
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(22, 99, 255, 0.1);
+    }
+    
+    button {
+      cursor: pointer;
+      background: var(--primary);
+      color: white;
+      border: none;
+      font-weight: 600;
+      padding: 10px 16px;
+      width: auto;
+      min-width: 140px;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background: var(--primary-dark);
+    }
+    
+    button:disabled {
+      background: var(--secondary);
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    /* ============================
+       BARRA DE FILTROS GENERAL
+    ============================ */
+    .filter-bar {
+      margin-top: 8px;
+      padding: 8px 0 4px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: white;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-row .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .filter-row label {
+      font-weight: 500;
+      margin-bottom: 0;
+    }
+
+    .filter-row input[type="text"],
+    .filter-row select {
+      max-width: 220px;
+      font-size: 13px;
+      padding: 6px 8px;
+    }
+
+    .filter-row .filter-btn {
+      padding: 6px 10px;
+      min-width: auto;
+      font-size: 13px;
+    }
+
+    /* ============================
+       MODAL SELECCIÓN DE VEHÍCULOS
+    ============================ */
+    .modal-vehiculos {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .modal-vehiculos.visible {
+      display: flex;
+    }
+
+    .modal-vehiculos .modal-content {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px 14px;
+      max-width: 480px;
+      width: 90%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-vehiculos .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-vehiculos .modal-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .modal-vehiculos .close-modal {
+      border: none;
+      background: none;
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-vehiculos .modal-body {
+      margin: 8px 0;
+      padding: 4px 0;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .vehiculos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 4px 10px;
+      font-size: 13px;
+    }
+
+    .vehiculos-grid label {
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-vehiculos .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .modal-vehiculos .modal-footer button {
+      padding: 6px 10px;
+      min-width: auto;
+      font-size: 13px;
+    }
+
+    /* ======================================================
+               PESTAÑAS (sin cambios de lógica)
+    ====================================================== */
+    .tabs {
+      display: flex;
+      margin: 15px 0;
+      border-bottom: 2px solid var(--border);
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-weight: 600;
+      color: var(--secondary);
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+    
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    /* ======================================================
+           TABLAS — ENCABEZADO FIJO + SCROLL VERTICAL
+    ====================================================== */
+
+    .table-container {
+      width: 100%;
+      margin-top: 20px;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      background: white;
+      border: 1px solid var(--border);
+    }
+    
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 75vh;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+      font-size: 13px;
+    }
+    
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    
+    th {
+      background: #e7eeff;
+      font-weight: 600;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    /* PRIMERA COLUMNA FIJA */
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      background: #f0f4ff !important;
+      z-index: 30;
+      min-width: 70px;
+    }
+
+    /* Columnas importantes un poco más anchas */
+    td:nth-child(1), th:nth-child(1) { min-width: 70px; } /* Vehículo */
+    td:nth-child(2), th:nth-child(2) { min-width: 90px; } /* Ingresos totales */
+    td:nth-child(3), th:nth-child(3) { min-width: 70px; } /* Salidas P1 */
+    td:nth-child(4), th:nth-child(4) { min-width: 70px; } /* Salidas P2 */
+    td:nth-child(5), th:nth-child(5) { min-width: 90px; } /* Total salidas */
+    td:nth-child(6), th:nth-child(6) { min-width: 60px; } /* Dif */
+    
+    /* Columnas editables */
+    .editable {
+      background: white !important;
+      cursor: text;
+    }
+    
+    .editable-input {
+      width: 100%;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      padding: 4px;
+      text-align: center;
+      font-size: 13px;
+    }
+    
+    .editable-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(22, 99, 255, 0.1);
+    }
+    
+    /* Textareas largos para campos de texto */
+    .textarea-input {
+      width: 100%;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+    
+    .textarea-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(22, 99, 255, 0.1);
+    }
+    
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    
+    tr:hover {
+      background-color: #f0f4ff;
+    }
+    
+    /* Estilos para vehículos faltantes */
+    .vehiculo-faltante {
+      background-color: #fff5f5 !important;
+    }
+    
+    .vehiculo-faltante td:first-child {
+      background-color: #fff5f5 !important;
+      font-weight: bold;
+      color: var(--danger);
+    }
+    
+    .alerta-faltante {
+      background-color: #ffe6e6 !important;
+      color: #d63031;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    
+    .alerta-presente {
+      background-color: #e8f5e8 !important;
+      color: #27ae60;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    
+    /* Bloqueo visual de columnas de solo lectura */
+    .bloqueado {
+      background: #f5f5f5 !important;
+      font-weight: 500;
+      color: #555;
+      cursor: not-allowed;
+      user-select: none;
+    }
+    
+    .ajuste-input {
+      width: 60px;
+      text-align: center;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    
+    .ajuste-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(22, 99, 255, 0.1);
+    }
+    .file-input-container {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    
+    .file-input-container input[type="file"] {
+      padding: 8px;
+      background: var(--light);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    
+    .file-status {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--secondary);
+    }
+    
+    .file-status.success {
+      color: var(--success);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .date-display {
+      background: #f0f4ff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 500;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 15px;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Indicador de scroll para móviles */
+    .scroll-hint {
+      display: none;
+      text-align: center;
+      padding: 8px;
+      background: #e7eeff;
+      color: var(--primary);
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .scroll-hint::after {
+      content: "← Desliza para ver más columnas →";
+    }
+    
+    /* Responsive mejorado */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .card {
+        padding: 15px;
+      }
+      
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .button-group {
+        flex-direction: column;
+      }
+      
+      button {
+        width: 100%;
+      }
+      
+      .scroll-hint {
+        display: block;
+      }
+      
+      table {
+        min-width: 1100px;
+      }
+      
+      th, td {
+        padding: 6px 4px;
+        font-size: 12px;
+      }
+      
+      .tabs {
+        flex-wrap: wrap;
+      }
+      
+      .tab {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      
+      .textarea-input {
+        min-height: 50px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <h2>Bot de movilidad Combuses</h2>
+    <div class="date-display" id="fechaDisplay">Seleccione una fecha</div>
+  </div>
+
+  <div class="form-grid">
+    <div class="input-group">
+      <label for="fechaReporte">Fecha del reporte:</label>
+      <input type="date" id="fechaReporte">
+    </div>
+
+    <div class="input-group">
+      <label for="fileDetalle">Archivo de pasajeros Sonar (viajes):</label>
+      <div class="file-input-container">
+        <input type="file" id="fileDetalle" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusDetalle"></div>
+    </div>
+
+    <div class="input-group">
+      <label for="fileMetro">Archivo Pasajeros Metro:</label>
+      <div class="file-input-container">
+        <input type="file" id="fileMetro" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusMetro"></div>
+    </div>
+
+    <!-- NUEVO: Input para archivo de ajustes -->
+    <div class="input-group">
+      <label for="fileAjustes">Archivo de Ajustes (opcional):</label>
+      <div class="file-input-container">
+        <input type="file" id="fileAjustes" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusAjustes"></div>
+    </div>
+  </div>
+
+  <!-- ================================================
+        BARRA FIJA — CONTENEDOR (top-sticky)
+  ================================================= -->
+  <div class="top-sticky">
+
+    <!-- BOTONES -->
+    <div class="button-group">
+      <button id="btnProcesar">Procesar reporte</button>
+      <button id="btnExportar" disabled>Descargar Excel</button>
+    </div>
+
+    <!-- PESTAÑAS (inicialmente ocultas) -->
+    <div id="tabsContainer" style="display: none;">
+      <div class="tabs">
+        <button class="tab active" data-tab="ruta700">Ruta 700</button>
+        <button class="tab" data-tab="especiales">Especiales</button>
+        <button class="tab" data-tab="todos">Todos los Vehículos</button>
+      </div>
+    </div>
+
+    <!-- ==========================
+         BARRA DE FILTROS GENERAL
+    =========================== -->
+    <div id="filterBar" class="filter-bar" style="display:none;">
+      <div class="filter-row">
+        <div class="filter-group">
+          <button type="button" id="btnVehiculos" class="filter-btn">
+            Seleccionar vehículos
+          </button>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtroBase">Base:</label>
+          <select id="filtroBase">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filtroDifNegativo">
+            DIF &lt; 0
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filtroMetroMayor20">
+            Metro &gt; 20
+          </label>
+        </div>
+
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <input type="text" id="filtroTexto" placeholder="Buscar texto en la tabla...">
+        </div>
+
+        <div class="filter-group">
+          <button type="button" id="btnLimpiarFiltros" class="filter-btn">
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /top-sticky -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Procesando datos, por favor espere...</p>
+  </div>
+
+  <!-- ================================
+        CONTENIDO DE LAS PESTAÑAS
+  ================================ -->
+
+  <div class="tab-content active" id="tab-ruta700">
+    <div class="table-container">
+      <div class="scroll-hint"></div>
+      <div class="table-scroll">
+        <div id="tablaRuta700"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-especiales">
+    <div class="table-container">
+      <div class="scroll-hint"></div>
+      <div class="table-scroll">
+        <div id="tablaEspeciales"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-todos">
+    <div class="table-container">
+      <div class="scroll-hint"></div>
+      <div class="table-scroll">
+        <div id="tablaTodos"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================
+       MODAL SELECCIÓN VEHÍCULOS
+  ========================== -->
+  <div id="modalVehiculos" class="modal-vehiculos">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Seleccionar vehículos</h3>
+        <button type="button" class="close-modal" id="cerrarModalVehiculos">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="listaVehiculos" class="vehiculos-grid">
+          <!-- Se llena por JS según la pestaña activa -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnVehiculosTodos">Todos</button>
+        <button type="button" id="btnVehiculosNinguno">Ninguno</button>
+        <button type="button" id="btnAplicarVehiculos">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- FIN card -->
+
+<script>
+/* ===========================
+      LISTA ACTUALIZADA DE VEHÍCULOS
+=========================== */
+const vehiculosEsperados = {
+  // Ruta 700
+  703: "700", 705: "700", 707: "700", 714: "700", 715: "700",
+  717: "700", 719: "700", 721: "700", 723: "700", 725: "700",
+  728: "700", 729: "700", 730: "700", 731: "700", 733: "700",
+  735: "700", 742: "700", 744: "700", 746: "700", 747: "700",
+  748: "700", 749: "700", 752: "700", 758: "700", 759: "700",
+  708: "700", 709: "700", 757: "700", 736: "700", 722: "700",
+  716: "700", 718: "700", 720: "700", 750: "700", 726: "700",
+  727: "700", 732: "700", 734: "700", 741: "700", 724: "700",
+  737: "700", 740: "700", 755: "700", 753: "700", 754: "700",
+  751: "700", 739: "700", 743: "700", 745: "700", 738: "700",
+  756: "700",
+
+  // Especiales
+  764: "ESPECIALES", 767: "ESPECIALES", 769: "ESPECIALES", 
+  766: "ESPECIALES", 768: "ESPECIALES"
+};
+
+const mapaBase = {
+  703:4,705:4,707:4,708:5,709:3,
+  714:3,715:4,716:3,717:4,718:3,
+  719:2,720:3,721:4,722:3,723:3,
+  724:3,725:4,726:3,727:3,728:4,
+  729:1,730:1,731:4,732:1,733:5,
+  734:3,735:4,736:8,737:3,738:3,
+  739:3,740:3,741:3,742:3,744:3,
+  745:3,746:4,747:5,748:2,749:2,
+  750:3,751:3,752:3,753:3,754:3,
+  755:3,757:5,758:3,759:6,756:0,
+  // Especiales
+  764:7,767:7,769:7,766:7,768:7,
+  743:3,756:8
+};
+
+/* =========================
+   ESTADO GLOBAL FILTROS
+========================= */
+let activeTab = "ruta700";
+let datosRuta700Global = [];
+let datosEspecialesGlobal = [];
+let datosTodosGlobal = [];
+
+let vehiculosSeleccionados = new Set();
+let estadoFiltros = {
+  base: "",
+  difNegativo: false,
+  metroMayor20: false,
+  texto: ""
+};
+
+function obtenerDatosActivos() {
+  if (activeTab === "ruta700") return datosRuta700Global;
+  if (activeTab === "especiales") return datosEspecialesGlobal;
+  return datosTodosGlobal;
+}
+
+function obtenerContainerActivo() {
+  if (activeTab === "ruta700") return "tablaRuta700";
+  if (activeTab === "especiales") return "tablaEspeciales";
+  return "tablaTodos";
+}
+
+// Actualizar fecha display
+document.getElementById("fechaReporte").addEventListener("change", function() {
+  const fecha = this.value;
+  if (fecha) {
+    const [anio, mes, dia] = fecha.split("-");
+    document.getElementById("fechaDisplay").textContent = `${dia}/${mes}/${anio}`;
+  } else {
+    document.getElementById("fechaDisplay").textContent = "Seleccione una fecha";
+  }
+});
+
+// Mostrar estado de archivos cargados
+document.getElementById("fileDetalle").addEventListener("change", function() {
+  const status = document.getElementById("statusDetalle");
+  if (this.files.length > 0) {
+    status.textContent = "✓ " + this.files[0].name;
+    status.className = "file-status success";
+  } else {
+    status.textContent = "";
+  }
+});
+
+document.getElementById("fileMetro").addEventListener("change", function() {
+  const status = document.getElementById("statusMetro");
+  if (this.files.length > 0) {
+    status.textContent = "✓ " + this.files[0].name;
+    status.className = "file-status success";
+  } else {
+    status.textContent = "";
+  }
+});
+
+// NUEVO: Mostrar estado del archivo de ajustes
+document.getElementById("fileAjustes").addEventListener("change", function() {
+  const status = document.getElementById("statusAjustes");
+  if (this.files.length > 0) {
+    status.textContent = "✓ " + this.files[0].name;
+    status.className = "file-status success";
+  } else {
+    status.textContent = "";
+  }
+});
+
+/* ======================================================
+   FUNCIÓN PARA PROCESAR ARCHIVO DE AJUSTES
+====================================================== */
+async function procesarAjustes(archivoAjustes, datosCompletos) {
+  if (!archivoAjustes) {
+    console.log("No se cargó archivo de ajustes");
+    return datosCompletos;
+  }
+
+  try {
+    const ajustesData = await leerExcel(archivoAjustes);
+    console.log("Datos de ajustes cargados:", ajustesData);
+    
+    // Crear un mapa de ajustes por vehículo
+    const mapaAjustes = {};
+    
+    ajustesData.forEach(ajuste => {
+      // Buscar el vehículo en diferentes columnas posibles
+      const vehiculo = ajuste["Vehiculo"] || ajuste["Vehículo"] || ajuste["Vehículo descripción"];
+      const valorAjuste = Number(ajuste["Ajustes"] || ajuste["Ajuste"] || 0);
+      
+      if (vehiculo && !isNaN(valorAjuste)) {
+        mapaAjustes[vehiculo] = valorAjuste;
+      }
+    });
+    
+    console.log("Mapa de ajustes:", mapaAjustes);
+    
+    // Aplicar ajustes a los datos
+    return datosCompletos.map(item => {
+      const vehiculo = item["Vehiculo"];
+      const ajuste = mapaAjustes[vehiculo];
+      
+      if (ajuste !== undefined && !isNaN(ajuste)) {
+        console.log(`Aplicando ajuste ${ajuste} al vehículo ${vehiculo}`);
+        
+        // Aplicar la misma lógica que tu función actual de ajustes
+        const ajustePrevio = Number(item["Ajustes"] || 0);
+        const ingresosBase = Number(item["Sonar "]) - Number(item["Descuento>20"]);
+        const salidasP1Base = Number(item["Salidas P1"]) + ajustePrevio;
+
+        // Aplicar nuevo ajuste
+        const ingresosAjustados = ingresosBase - ajuste;
+        const salidasP1Ajustadas = salidasP1Base - ajuste;
+        const totalSalidas = salidasP1Ajustadas + Number(item[" Salidas P2"]);
+        const difAjustada = ingresosAjustados - totalSalidas;
+
+        return {
+          ...item,
+          "Ajustes": ajuste,
+          "Ingresos totales": ingresosAjustados,
+          "Salidas P1": salidasP1Ajustadas,
+          "Total salidas": totalSalidas,
+          "Dif": difAjustada
+        };
+      }
+      
+      return item;
+    });
+    
+  } catch (error) {
+    console.error("Error al procesar ajustes:", error);
+    alert("Error al procesar archivo de ajustes. Se continuará sin ajustes.");
+    return datosCompletos;
+  }
+}
+
+/* ======================================================
+   FUNCIÓN DE VALIDACIÓN Y CREACIÓN DE DATOS COMPLETOS
+====================================================== */
+function crearDatosCompletos(grupos, fechaClave, dia, mes, anioNum, mapaMetro) {
+  const datosCompletos = [];
+  const vehiculosEncontrados = Object.keys(grupos).map(v => Number(v));
+  
+  // Procesar todos los vehículos esperados en orden numérico
+  const vehiculosOrdenados = Object.keys(vehiculosEsperados)
+    .map(Number)
+    .sort((a, b) => a - b);
+  
+  vehiculosOrdenados.forEach(vehiculo => {
+    const ruta = vehiculosEsperados[vehiculo];
+    const estaPresente = vehiculosEncontrados.includes(vehiculo);
+    
+    if (estaPresente) {
+      // Vehículo presente - usar datos del archivo
+      datosCompletos.push({
+        ...grupos[vehiculo],
+        "Validación": "PRESENTE",
+        "Ruta Validación": ruta
+      });
+    } else {
+      // Vehículo faltante - crear registro vacío con alerta
+      datosCompletos.push({
+        "Vehiculo": vehiculo,
+        "Ingresos totales": 0,
+        "Salidas P1": 0,
+        " Salidas P2": 0,
+        "Total salidas": 0,
+        "Dif": 0,
+        "Ruta": ruta,
+        "Fecha": fechaClave,
+        "Mes": obtenerMes(mes),
+        "Año": anioNum,
+        "# Día": obtenerDiaSemana(dia, mes, anioNum),
+        "Base": mapaBase[vehiculo] || "SIN BASE",
+        "Ajustes": 0,
+        "Pasajeros metro": mapaMetro[vehiculo] || 0,
+        "Descuento>20": 0,
+        "No labora": "FALTANTE",
+        "Observaciones": "Vehículo no encontrado en archivo",
+        "Sonar ": 0,
+        "Viajes realizados": 0,
+        "SUB-RUTA": "",
+        "Observaciones pasajero 20": "Vehículo faltante",
+        "Validación": "FALTANTE",
+        "Ruta Validación": ruta
+      });
+    }
+  });
+  
+  return datosCompletos;
+}
+
+/* ======================================================
+   FUNCIÓN PARA FILTRAR DATOS POR RUTA
+====================================================== */
+function filtrarPorRuta(datos, ruta) {
+  return datos.filter(item => item["Ruta Validación"] === ruta);
+}
+
+/* ======================================================
+   MOSTRAR TABLAS EN PESTAÑAS + INICIALIZAR FILTROS
+====================================================== */
+function mostrarTablasEnPestanas(datosCompletos) {
+  const datosRuta700 = filtrarPorRuta(datosCompletos, "700");
+  const datosEspeciales = filtrarPorRuta(datosCompletos, "ESPECIALES");
+
+  // Guardar globales
+  datosRuta700Global = datosRuta700;
+  datosEspecialesGlobal = datosEspeciales;
+  datosTodosGlobal = datosCompletos;
+
+  // Render inicial (sin filtros) en las tres tablas
+  mostrarTabla(datosRuta700Global, "tablaRuta700");
+  mostrarTabla(datosEspecialesGlobal, "tablaEspeciales");
+  mostrarTabla(datosTodosGlobal, "tablaTodos");
+
+  // Contadores en pestañas
+  document.querySelector('[data-tab="ruta700"]').textContent = `Ruta 700 (${datosRuta700Global.length})`;
+  document.querySelector('[data-tab="especiales"]').textContent = `Especiales (${datosEspecialesGlobal.length})`;
+  document.querySelector('[data-tab="todos"]').textContent = `Todos (${datosTodosGlobal.length})`;
+
+  // Mostrar container de pestañas y barra de filtros
+  document.getElementById("tabsContainer").style.display = "block";
+  document.getElementById("filterBar").style.display = "block";
+
+  // Tab activa por defecto
+  activeTab = "ruta700";
+
+  // Inicializar filtros para la tab activa
+  inicializarFiltrosUI();
+  aplicarFiltros();
+}
+
+function inicializarFiltrosUI() {
+  // Reset estado filtros
+  vehiculosSeleccionados = new Set();
+  estadoFiltros = {
+    base: "",
+    difNegativo: false,
+    metroMayor20: false,
+    texto: ""
+  };
+
+  // Reset UI
+  const selBase = document.getElementById("filtroBase");
+  const chkDif = document.getElementById("filtroDifNegativo");
+  const chkMetro = document.getElementById("filtroMetroMayor20");
+  const txtFiltro = document.getElementById("filtroTexto");
+
+  if (selBase) selBase.value = "";
+  if (chkDif) chkDif.checked = false;
+  if (chkMetro) chkMetro.checked = false;
+  if (txtFiltro) txtFiltro.value = "";
+
+  // Construir combos / lista según tab activa
+  construirOpcionesBase();
+  construirModalVehiculos();
+}
+
+function construirOpcionesBase() {
+  const selBase = document.getElementById("filtroBase");
+  if (!selBase) return;
+
+  const datos = obtenerDatosActivos();
+  const bases = Array.from(
+    new Set(
+      datos
+        .map(r => r["Base"])
+        .filter(b => b !== "" && b != null)
+    )
+  ).sort((a, b) => String(a).localeCompare(String(b)));
+
+  selBase.innerHTML = '<option value="">Todas</option>' +
+    bases.map(b => `<option value="${b}">${b}</option>`).join("");
+}
+
+function construirModalVehiculos() {
+  const cont = document.getElementById("listaVehiculos");
+  if (!cont) return;
+
+  const datos = obtenerDatosActivos();
+  const vehiculos = Array.from(
+    new Set(
+      datos
+        .map(r => r["Vehiculo"])
+        .filter(v => v !== "" && v != null)
+    )
+  ).sort((a, b) => Number(a) - Number(b));
+
+  let html = "";
+  vehiculos.forEach(v => {
+    const checked = vehiculosSeleccionados.has(v) ? "checked" : "";
+    html += `
+      <label>
+        <input type="checkbox" value="${v}" ${checked}>
+        ${v}
+      </label>
+    `;
+  });
+
+  cont.innerHTML = html;
+}
+
+function aplicarFiltros() {
+  const baseDatos = obtenerDatosActivos();
+  const containerId = obtenerContainerActivo();
+
+  const filtrados = baseDatos.filter(row => {
+    // Vehículos seleccionados
+    if (vehiculosSeleccionados.size > 0 && !vehiculosSeleccionados.has(row["Vehiculo"])) {
+      return false;
+    }
+
+    // Base
+    if (estadoFiltros.base && String(row["Base"]) !== String(estadoFiltros.base)) {
+      return false;
+    }
+
+    // DIF < 0
+    if (estadoFiltros.difNegativo && !(Number(row["Dif"] || 0) < 0)) {
+      return false;
+    }
+
+    // Metro > 20
+    if (estadoFiltros.metroMayor20 && !(Number(row["Pasajeros metro"] || 0) > 20)) {
+      return false;
+    }
+
+    // Texto general
+    if (estadoFiltros.texto) {
+      const t = estadoFiltros.texto.toLowerCase();
+      const rowText = Object.values(row).join(" ").toLowerCase();
+      if (!rowText.includes(t)) return false;
+    }
+
+    return true;
+  });
+
+  mostrarTabla(filtrados, containerId);
+}
+
+/* ======================================================
+   PROCESAR REPORTE - LÓGICA PRINCIPAL
+====================================================== */
+document.getElementById("btnProcesar").addEventListener("click", async () => {
+  const archivo = document.getElementById("fileDetalle").files[0];
+  const archivoMetro = document.getElementById("fileMetro").files[0];
+  const archivoAjustes = document.getElementById("fileAjustes").files[0]; // Nuevo
+  const fechaSel = document.getElementById("fechaReporte").value;
+
+  if(!fechaSel){ alert("Debes ingresar la fecha."); return; }
+  if(!archivo){ alert("Debes cargar el archivo de viajes."); return; }
+  if(!archivoMetro){ alert("Debes cargar archivo de Pasajeros Metro."); return; }
+
+  // Mostrar loading
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("btnProcesar").disabled = true;
+
+  try {
+    const [anio, mesRaw, diaRaw] = fechaSel.split("-");
+    const fechaClave = `${diaRaw}/${mesRaw}/${anio}`;
+    const dia = Number(diaRaw);
+    const mes = Number(mesRaw) - 1;
+    const anioNum = Number(anio);
+
+    const viajes = await leerExcel(archivo);
+    const metro = await leerExcel(archivoMetro);
+
+    /* ======================================================
+          MAPA METRO – SOLO POR VEHÍCULO (SIN FECHA)
+    ======================================================= */
+    const mapaMetro = {};
+    metro.forEach(m => {
+        const veh = Number(m["Vehiculos"]);
+        const total = Number(m["Total general"] || 0);
+        if(veh){
+           mapaMetro[veh] = total;
+        }
+    });
+
+    /* ======================================================
+             AGRUPAR VIAJES POR VEHÍCULO
+    ======================================================= */
+    const grupos = {};
+
+    viajes.forEach(r => {
+      const veh = r["Vehículo descripción"] || r["Vehiculo descripción"] || r["Vehiculo"];
+      if(!veh) return;
+
+      const ingresos = Number(r["Ingresos totales"] || 0);
+      const sP1 = Number(r["Salidas P1"] || 0);
+      const sP2 = Number(r[" Salidas P2"] || 0);
+      const sTot = Number(r["Salidas totales"] || 0);
+      const nombreRuta = String(r["Nombre de ruta"] || "").toLowerCase();
+
+      // VERIFICAR SI ES "SIN RUTA" - NO CONTAR ESTOS VIAJES
+      const esSinRuta = nombreRuta.includes("sin ruta");
+      
+      const excedente = (esSinRuta || ingresos <= 20) ? 0 : ingresos - 20;
+
+      // CALCULAR VALORES CON DESCUENTO APLICADO
+      const ingresosConDescuento = ingresos - excedente;
+      const salidasP1ConDescuento = sP1 - excedente;
+      const totalSalidasConDescuento = sTot - excedente;
+
+      if(!grupos[veh]){
+        grupos[veh] = {
+          "Vehiculo": veh,
+          "Ingresos totales": ingresosConDescuento,
+          "Salidas P1": salidasP1ConDescuento,
+          " Salidas P2": sP2,
+          "Total salidas": totalSalidasConDescuento,
+          "Dif": 0,
+          "Ruta": "700",
+          "Fecha": fechaClave,
+          "Mes": obtenerMes(mes),
+          "Año": anioNum,
+          "# Día": obtenerDiaSemana(dia, mes, anioNum),
+          "Base": mapaBase[veh] || "SIN BASE",
+          "Ajustes": 0,
+          "Pasajeros metro": mapaMetro[veh] || 0,
+          "Descuento>20": excedente,
+          "No labora": "",
+          "Observaciones": "",
+          "Sonar ": ingresos,
+          "Viajes realizados": esSinRuta ? 0 : 1,
+          "SUB-RUTA": "",
+          "Observaciones pasajero 20": ""
+        };
+      } else {
+        grupos[veh]["Ingresos totales"] += ingresosConDescuento;
+        grupos[veh]["Salidas P1"]       += salidasP1ConDescuento;
+        grupos[veh][" Salidas P2"]      += sP2;
+        grupos[veh]["Total salidas"]    += totalSalidasConDescuento;
+        if (!esSinRuta) {
+          grupos[veh]["Viajes realizados"] += 1;
+        }
+        grupos[veh]["Descuento>20"]     += excedente;
+        grupos[veh]["Sonar "]           += ingresos;
+      }
+    });
+
+    /* ======================================================
+              DIF INICIAL (con descuento ya aplicado)
+    ======================================================= */
+    Object.values(grupos).forEach(r => {
+      r["Dif"] = r["Ingresos totales"] - r["Total salidas"];
+    });
+
+    // CREAR DATOS COMPLETOS CON VEHÍCULOS FALTANTES
+    let datosCompletos = crearDatosCompletos(grupos, fechaClave, dia, mes, anioNum, mapaMetro);
+    
+    // NUEVO: PROCESAR AJUSTES SI SE CARGÓ ARCHIVO
+    datosCompletos = await procesarAjustes(archivoAjustes, datosCompletos);
+    
+    // MOSTRAR EN PESTAÑAS + FILTROS
+    mostrarTablasEnPestanas(datosCompletos);
+
+    document.getElementById("btnExportar").disabled = false;
+    document.getElementById("btnExportar").onclick = () => exportarExcel(datosCompletos);
+
+    // Contar vehículos faltantes
+    const vehiculosFaltantes = datosCompletos.filter(item => item["Validación"] === "FALTANTE").length;
+    if (vehiculosFaltantes > 0) {
+      setTimeout(() => {
+        alert(`⚠️ ATENCIÓN: Se encontraron ${vehiculosFaltantes} vehículos faltantes en el archivo. Verifique las tablas.`);
+      }, 500);
+    }
+
+  } catch (error) {
+    console.error("Error al procesar:", error);
+    alert("Ocurrió un error al procesar los archivos. Verifique que sean válidos.");
+  } finally {
+    // Ocultar loading
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("btnProcesar").disabled = false;
+  }
+});
+
+/* ===========================
+      MOSTRAR TABLA CON CAMPOS EDITABLES + TOTALES
+=========================== */
+function mostrarTabla(data, containerId){
+  if (!data || data.length === 0) {
+    document.getElementById(containerId).innerHTML = "<p>No hay datos para mostrar</p>";
+    return;
+  }
+  
+  const columnas = Object.keys(data[0]);
+  let html = "<table><thead><tr>";
+
+  columnas.forEach(c => html += `<th>${c}</th>`);
+  html += "</tr></thead><tbody>";
+
+  data.forEach((r, i) => {
+    const esFaltante = r["Validación"] === "FALTANTE";
+    const claseFila = esFaltante ? "vehiculo-faltante" : "";
+    
+    html += `<tr class="${claseFila}" data-index="${i}">`;
+
+    columnas.forEach(c => {
+      const valor = r[c];
+      
+      if (c === "Validación") {
+        const claseAlerta = esFaltante ? "alerta-faltante" : "alerta-presente";
+        html += `<td class="${claseAlerta}">${valor}</td>`;
+
+      } else if (c === "Ajustes" && !esFaltante) {
+        html += `
+          <td>
+            <input type="number"
+                   value="${valor}"
+                   data-index="${i}"
+                   data-column="${c}"
+                   class="ajuste-input"
+                   style="width:60px; text-align:center;">
+          </td>`;
+
+      } else if ((c === "Ingresos totales" || c === "Salidas P1") && !esFaltante) {
+        // CAMPOS NUMÉRICOS EDITABLES
+        html += `
+          <td class="editable">
+            <input type="number"
+                   value="${valor}"
+                   data-index="${i}"
+                   data-column="${c}"
+                   class="editable-input"
+                   style="width:80px; text-align:center;">
+          </td>`;
+
+      } else if ((c === "Observaciones" || c === "Observaciones pasajero 20" || c === "No labora") && !esFaltante) {
+        // CAMPOS DE TEXTO LARGO
+        html += `
+          <td class="editable">
+            <textarea 
+                   data-index="${i}"
+                   data-column="${c}"
+                   class="textarea-input">${valor}</textarea>
+          </td>`;
+
+      } else if (c === "Viajes realizados" && !esFaltante) {
+        html += `
+          <td class="editable">
+            <input type="number"
+                   value="${valor}"
+                   data-index="${i}"
+                   data-column="${c}"
+                   class="editable-input"
+                   style="width:60px; text-align:center;">
+          </td>`;
+
+      } else {
+        html += `<td class="bloqueado" data-column="${c}">${valor}</td>`;
+      }
+    });
+
+    html += "</tr>";
+  });
+
+  /* =======================================================
+             FILA DE TOTALES (AL FINAL DE LA TABLA)
+  ======================================================= */
+  const totales = {};
+  columnas.forEach(c => totales[c] = 0);
+
+  data.forEach(r => {
+    columnas.forEach(c => {
+      if (typeof r[c] === "number") {
+        totales[c] += r[c];
+      }
+    });
+  });
+
+  html += `<tr style="background:#e9f5ff; font-weight:bold;">`;
+
+  columnas.forEach(c => {
+    if (typeof totales[c] === "number") {
+      html += `<td>${totales[c]}</td>`;
+    } else {
+      html += `<td></td>`;
+    }
+  });
+
+  html += `</tr>`;
+
+  html += "</tbody></table>";
+
+  document.getElementById(containerId).innerHTML = html;
+  
+  // Activar eventos para campos editables
+  activarAjustesDinamicos(data);
+  activarCamposEditables(data);
+}
+
+/* ======================================================
+   AJUSTES DINÁMICOS CON DESCUENTO - CORREGIDO
+====================================================== */
+function activarAjustesDinamicos(data){
+  const inputs = document.querySelectorAll(".ajuste-input");
+
+  inputs.forEach(input => {
+    input.addEventListener("input", function(){
+      const index = Number(this.dataset.index);
+      const fila = data[index];
+      const rowElement = this.closest('tr');
+
+      const ajustePrevio = Number(fila["Ajustes"] || 0);
+      const ajusteNuevo  = Number(this.value) || 0;
+
+      // guardar nuevo ajuste
+      fila["Ajustes"] = ajusteNuevo;
+
+      // OBTENER VALORES BASE (del cálculo inicial con descuento)
+      const ingresosBase = Number(fila["Sonar "]) - Number(fila["Descuento>20"]);
+      const salidasP1Base = Number(fila["Salidas P1"]) + ajustePrevio;
+
+      // APLICAR AJUSTE A AMBAS COLUMNAS
+      const ingresosAjustados = ingresosBase - ajusteNuevo;
+      const salidasP1Ajustadas = salidasP1Base - ajusteNuevo;
+      
+      // RECALCULAR TOTAL SALIDAS Y DIF DESDE CERO
+      const totalSalidas = salidasP1Ajustadas + Number(fila[" Salidas P2"]);
+      const difAjustada = ingresosAjustados - totalSalidas;
+
+      // Actualizar fila
+      fila["Ingresos totales"] = ingresosAjustados;
+      fila["Salidas P1"] = salidasP1Ajustadas;
+      fila["Total salidas"] = totalSalidas;
+      fila["Dif"] = difAjustada;
+
+      // ACTUALIZAR VISUALMENTE LAS CELDAS BLOQUEADAS
+      const celdasBloqueadas = rowElement.querySelectorAll('.bloqueado');
+      celdasBloqueadas.forEach(celda => {
+        const columna = celda.getAttribute('data-column');
+        switch(columna) {
+          case 'Ingresos totales':
+            celda.textContent = ingresosAjustados;
+            break;
+          case 'Salidas P1':
+            celda.textContent = salidasP1Ajustadas;
+            break;
+          case 'Total salidas':
+            celda.textContent = totalSalidas;
+            break;
+          case 'Dif':
+            celda.textContent = difAjustada;
+            break;
+        }
+      });
+
+      // ACTUALIZAR INPUTS EDITABLES TAMBIÉN
+      const inputsEditables = rowElement.querySelectorAll('.editable-input');
+      inputsEditables.forEach(inputEditable => {
+        const columnaInput = inputEditable.getAttribute('data-column');
+        if (columnaInput === 'Ingresos totales') {
+          inputEditable.value = ingresosAjustados;
+        } else if (columnaInput === 'Salidas P1') {
+          inputEditable.value = salidasP1Ajustadas;
+        }
+      });
+    });
+  });
+}
+
+/* ======================================================
+   ACTIVAR CAMPOS EDITABLES
+====================================================== */
+function activarCamposEditables(data) {
+  // Campos numéricos (excepto ajustes)
+  const inputsNumericos = document.querySelectorAll('.editable-input:not(.ajuste-input)');
+  inputsNumericos.forEach(input => {
+    input.addEventListener('input', function() {
+      const index = parseInt(this.getAttribute('data-index'));
+      const columna = this.getAttribute('data-column');
+      const valor = this.value;
+      
+      data[index][columna] = valor;
+      
+      // Recalcular diferencias si se modifican ingresos o salidas
+      if (columna === "Ingresos totales" || columna === "Salidas P1" || columna === " Salidas P2") {
+        recalcularDiferencias(data[index]);
+      }
+    });
+  });
+  
+  // Campos de texto largos
+  const textareas = document.querySelectorAll('.textarea-input');
+  textareas.forEach(textarea => {
+    textarea.addEventListener('input', function() {
+      const index = parseInt(this.getAttribute('data-index'));
+      const columna = this.getAttribute('data-column');
+      const valor = this.value;
+      
+      data[index][columna] = valor;
+    });
+  });
+}
+
+/* ======================================================
+   RECALCULAR DIFERENCIAS
+====================================================== */
+function recalcularDiferencias(fila) {
+  const ingresos = parseFloat(fila["Ingresos totales"]) || 0;
+  const salidasP1 = parseFloat(fila["Salidas P1"]) || 0;
+  const salidasP2 = parseFloat(fila[" Salidas P2"]) || 0;
+  
+  const totalSalidas = salidasP1 + salidasP2;
+  const diferencia = ingresos - totalSalidas;
+  
+  fila["Total salidas"] = totalSalidas;
+  fila["Dif"] = diferencia;
+}
+
+/* ======================================================
+   MANEJO DE PESTAÑAS
+====================================================== */
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('tab')) {
+    const tabId = e.target.getAttribute('data-tab');
+    
+    // Remover clase active de todas las pestañas y contenidos
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    // Agregar clase active a la pestaña y contenido seleccionados
+    e.target.classList.add('active');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+
+    // Actualizar tab activa y filtros
+    activeTab = tabId;
+    inicializarFiltrosUI();
+    aplicarFiltros();
+  }
+});
+
+/* =========================
+   EVENTOS BARRA FILTROS
+========================= */
+document.getElementById("filtroBase").addEventListener("change", e => {
+  estadoFiltros.base = e.target.value;
+  aplicarFiltros();
+});
+
+document.getElementById("filtroDifNegativo").addEventListener("change", e => {
+  estadoFiltros.difNegativo = e.target.checked;
+  aplicarFiltros();
+});
+
+document.getElementById("filtroMetroMayor20").addEventListener("change", e => {
+  estadoFiltros.metroMayor20 = e.target.checked;
+  aplicarFiltros();
+});
+
+document.getElementById("filtroTexto").addEventListener("input", e => {
+  estadoFiltros.texto = e.target.value.trim();
+  aplicarFiltros();
+});
+
+document.getElementById("btnLimpiarFiltros").addEventListener("click", () => {
+  inicializarFiltrosUI();
+  aplicarFiltros();
+});
+
+/* =========================
+   MODAL VEHÍCULOS
+========================= */
+const modalVehiculos = document.getElementById("modalVehiculos");
+const btnVehiculos = document.getElementById("btnVehiculos");
+const btnCerrarModal = document.getElementById("cerrarModalVehiculos");
+const btnVehTodos = document.getElementById("btnVehiculosTodos");
+const btnVehNinguno = document.getElementById("btnVehiculosNinguno");
+const btnVehAplicar = document.getElementById("btnAplicarVehiculos");
+
+btnVehiculos.addEventListener("click", () => {
+  construirModalVehiculos();
+  modalVehiculos.classList.add("visible");
+});
+
+btnCerrarModal.addEventListener("click", () => {
+  modalVehiculos.classList.remove("visible");
+});
+
+modalVehiculos.addEventListener("click", (e) => {
+  if (e.target === modalVehiculos) {
+    modalVehiculos.classList.remove("visible");
+  }
+});
+
+btnVehTodos.addEventListener("click", () => {
+  const checks = modalVehiculos.querySelectorAll("input[type='checkbox']");
+  checks.forEach(ch => ch.checked = true);
+});
+
+btnVehNinguno.addEventListener("click", () => {
+  const checks = modalVehiculos.querySelectorAll("input[type='checkbox']");
+  checks.forEach(ch => ch.checked = false);
+});
+
+btnVehAplicar.addEventListener("click", () => {
+  vehiculosSeleccionados = new Set();
+  const checks = modalVehiculos.querySelectorAll("input[type='checkbox']");
+  checks.forEach(ch => {
+    if (ch.checked) {
+      const v = ch.value;
+      vehiculosSeleccionados.add(isNaN(Number(v)) ? v : Number(v));
+    }
+  });
+  modalVehiculos.classList.remove("visible");
+  aplicarFiltros();
+});
+
+/* ===========================
+      FUNCIONES AUXILIARES
+=========================== */
+function obtenerDiaSemana(d, m, a){
+  const fecha = new Date(a, m, d);
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  return dias[fecha.getDay()];
+}
+
+function leerExcel(archivo){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type:"array"});
+        const sheet = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheet], {defval:""});
+        resolve(rows);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(new Error("Error al leer el archivo"));
+    reader.readAsArrayBuffer(archivo);
+  });
+}
+
+function obtenerMes(m){
+  return ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+          "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m];
+}
+
+function exportarExcel(data){
+  const fecha = document.getElementById("fechaReporte").value;
+  const nombreArchivo = `Resumen_vehiculos_${fecha || 'sin_fecha'}.xlsx`;
+  
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+  XLSX.writeFile(wb, nombreArchivo);
+}
+</script>
+
+</body>
+</html>
