@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Movilidad Ruta 700</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <h2>Movilidad Ruta 700</h2>
+    <div class="date-display" id="fechaDisplay">Seleccione una fecha</div>
+  </div>
+
+  <div class="form-grid">
+    <div class="input-group">
+      <label for="fechaReporte">Fecha del reporte:</label>
+      <input type="date" id="fechaReporte">
+    </div>
+
+    <div class="input-group">
+      <label for="fileDetalle">Archivo de pasajeros Sonar (viajes):</label>
+      <div class="file-input-container">
+        <input type="file" id="fileDetalle" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusDetalle"></div>
+    </div>
+
+    <div class="input-group">
+      <label for="fileMetro">Archivo Pasajeros Metro:</label>
+      <div class="file-input-container">
+        <input type="file" id="fileMetro" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusMetro"></div>
+    </div>
+
+    <!-- NUEVO: Input para archivo de ajustes -->
+    <div class="input-group">
+      <label for="fileAjustes">Archivo de Ajustes (opcional):</label>
+      <div class="file-input-container">
+        <input type="file" id="fileAjustes" accept=".xlsx,.xls">
+      </div>
+      <div class="file-status" id="statusAjustes"></div>
+    </div>
+  </div>
+
+  <!-- ================================================
+        BARRA FIJA — CONTENEDOR (top-sticky)
+  ================================================= -->
+  <div class="top-sticky">
+
+    <!-- BOTONES -->
+    <div class="button-group">
+      <button id="btnProcesar">Procesar reporte</button>
+      <button id="btnExportar" disabled>Descargar Excel</button>
+    </div>
+
+    <!-- PESTAÑAS (inicialmente ocultas) -->
+    <div id="tabsContainer" style="display: none;">
+      <div class="tabs">
+        <button class="tab active" data-tab="ruta700">Ruta 700</button>
+        <button class="tab" data-tab="todos">Todos los Vehículos</button>
+      </div>
+    </div>
+
+    <!-- ==========================
+         BARRA DE FILTROS GENERAL
+    =========================== -->
+    <div id="filterBar" class="filter-bar" style="display:none;">
+      <div class="filter-row">
+        <div class="filter-group">
+          <button type="button" id="btnVehiculos" class="filter-btn">
+            Seleccionar vehículos
+          </button>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtroBase">Base:</label>
+          <select id="filtroBase">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filtroDifNegativo">
+            DIF &lt; 0
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filtroMetroMayor20">
+            Metro &gt; 20
+          </label>
+        </div>
+
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <input type="text" id="filtroTexto" placeholder="Buscar texto en la tabla...">
+        </div>
+
+        <div class="filter-group">
+          <button type="button" id="btnLimpiarFiltros" class="filter-btn">
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /top-sticky -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Procesando datos, por favor espere...</p>
+  </div>
+
+  <!-- ================================
+        CONTENIDO DE LAS PESTAÑAS
+  ================================ -->
+
+  <div class="tab-content active" id="tab-ruta700">
+    <div class="table-container">
+      <div class="scroll-hint"></div>
+      <div class="table-scroll">
+        <div id="tablaRuta700"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-todos">
+    <div class="table-container">
+      <div class="scroll-hint"></div>
+      <div class="table-scroll">
+        <div id="tablaTodos"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================
+       MODAL SELECCIÓN VEHÍCULOS
+  ========================== -->
+  <div id="modalVehiculos" class="modal-vehiculos">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Seleccionar vehículos</h3>
+        <button type="button" class="close-modal" id="cerrarModalVehiculos">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="listaVehiculos" class="vehiculos-grid">
+          <!-- Se llena por JS según la pestaña activa -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnVehiculosTodos">Todos</button>
+        <button type="button" id="btnVehiculosNinguno">Ninguno</button>
+        <button type="button" id="btnAplicarVehiculos">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- FIN card -->
+
+<script src="script.js"></script>
+</body>
+</html>
