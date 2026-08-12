@@ -918,7 +918,7 @@ async function procesarAjustes(archivoAjustes, datosCompletos) {
 
         // Aplicar la misma lógica que tu función actual de ajustes
         const ajustePrevio = Number(item["Ajustes"] || 0);
-        const ingresosBase = Number(item["Sonar "]) - Number(item["Descuento>20"]);
+        const ingresosBase = Number(item["Sonar "]) - Number(item["Descuento>20"]) - Number(item["Viajes realizados"] || 0);
         const salidasP1Base = Number(item["Salidas P1"]) + ajustePrevio;
 
         // Aplicar nuevo ajuste
@@ -1428,7 +1428,7 @@ function activarAjustesDinamicos(data){
       fila["Ajustes"] = ajusteNuevo;
 
       // OBTENER VALORES BASE (del cálculo inicial con descuento)
-      const ingresosBase = Number(fila["Sonar "]) - Number(fila["Descuento>20"]);
+      const ingresosBase = Number(fila["Sonar "]) - Number(fila["Descuento>20"]) - Number(fila["Viajes realizados"] || 0);
       const salidasP1Base = Number(fila["Salidas P1"]) + ajustePrevio;
 
       // APLICAR AJUSTE A AMBAS COLUMNAS
