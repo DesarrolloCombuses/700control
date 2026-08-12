@@ -134,23 +134,22 @@ async function procesarAjustes(archivoAjustes, datosCompletos) {
       if (ajuste !== undefined && !isNaN(ajuste)) {
         console.log(`Aplicando ajuste ${ajuste} al vehículo ${vehiculo}`);
 
-        // Aplicar la misma lógica que tu función actual de ajustes
+        // Salidas P1 no se toca, conserva su valor original del archivo.
+        // El ajuste se resta de Ingresos totales y de Total salidas.
         const ajustePrevio = Number(item["Ajustes"] || 0);
         const ingresosBase = Number(item["Sonar "]) - Number(item["Descuento>20"]) - Number(item["Viajes realizados"] || 0);
-        const salidasP1Base = Number(item["Salidas P1"]) + ajustePrevio;
+        const totalSalidasBase = Number(item["Total salidas"]) + ajustePrevio;
 
         // Aplicar nuevo ajuste
         const ingresosAjustados = ingresosBase - ajuste;
-        const salidasP1Ajustadas = salidasP1Base - ajuste;
-        const totalSalidas = salidasP1Ajustadas + Number(item[" Salidas P2"]);
-        const difAjustada = ingresosAjustados - totalSalidas;
+        const totalSalidasAjustada = totalSalidasBase - ajuste;
+        const difAjustada = ingresosAjustados - totalSalidasAjustada;
 
         return {
           ...item,
           "Ajustes": ajuste,
           "Ingresos totales": ingresosAjustados,
-          "Salidas P1": salidasP1Ajustadas,
-          "Total salidas": totalSalidas,
+          "Total salidas": totalSalidasAjustada,
           "Dif": difAjustada
         };
       }
@@ -470,15 +469,14 @@ document.getElementById("btnProcesar").addEventListener("click", async () => {
     /* ======================================================
        DESCUENTO POR VIAJES REALIZADOS
        Se resta "Viajes realizados" de Ingresos totales y de
-       Salidas P1 (mismo criterio que el ajuste manual), y se
-       recalculan Total salidas y Dif con esos valores ya
-       descontados.
+       Total salidas. Salidas P1 no se toca, conserva su valor
+       original del archivo (solo con el descuento >20 ya
+       aplicado por viaje).
     ======================================================= */
     Object.values(grupos).forEach(r => {
       const viajes = r["Viajes realizados"] || 0;
       r["Ingresos totales"] -= viajes;
-      r["Salidas P1"] -= viajes;
-      r["Total salidas"] = r["Salidas P1"] + r[" Salidas P2"];
+      r["Total salidas"] -= viajes;
       r["Dif"] = r["Ingresos totales"] - r["Total salidas"];
     });
 
@@ -646,21 +644,18 @@ function activarAjustesDinamicos(data){
       fila["Ajustes"] = ajusteNuevo;
 
       // OBTENER VALORES BASE (del cálculo inicial con descuento)
+      // Salidas P1 no se toca, conserva su valor original del archivo.
       const ingresosBase = Number(fila["Sonar "]) - Number(fila["Descuento>20"]) - Number(fila["Viajes realizados"] || 0);
-      const salidasP1Base = Number(fila["Salidas P1"]) + ajustePrevio;
+      const totalSalidasBase = Number(fila["Total salidas"]) + ajustePrevio;
 
-      // APLICAR AJUSTE A AMBAS COLUMNAS
+      // APLICAR AJUSTE A INGRESOS TOTALES Y TOTAL SALIDAS
       const ingresosAjustados = ingresosBase - ajusteNuevo;
-      const salidasP1Ajustadas = salidasP1Base - ajusteNuevo;
-
-      // RECALCULAR TOTAL SALIDAS Y DIF DESDE CERO
-      const totalSalidas = salidasP1Ajustadas + Number(fila[" Salidas P2"]);
-      const difAjustada = ingresosAjustados - totalSalidas;
+      const totalSalidasAjustada = totalSalidasBase - ajusteNuevo;
+      const difAjustada = ingresosAjustados - totalSalidasAjustada;
 
       // Actualizar fila
       fila["Ingresos totales"] = ingresosAjustados;
-      fila["Salidas P1"] = salidasP1Ajustadas;
-      fila["Total salidas"] = totalSalidas;
+      fila["Total salidas"] = totalSalidasAjustada;
       fila["Dif"] = difAjustada;
 
       // ACTUALIZAR VISUALMENTE LAS CELDAS BLOQUEADAS
@@ -668,14 +663,8 @@ function activarAjustesDinamicos(data){
       celdasBloqueadas.forEach(celda => {
         const columna = celda.getAttribute('data-column');
         switch(columna) {
-          case 'Ingresos totales':
-            celda.textContent = ingresosAjustados;
-            break;
-          case 'Salidas P1':
-            celda.textContent = salidasP1Ajustadas;
-            break;
           case 'Total salidas':
-            celda.textContent = totalSalidas;
+            celda.textContent = totalSalidasAjustada;
             break;
           case 'Dif':
             celda.textContent = difAjustada;
@@ -683,14 +672,12 @@ function activarAjustesDinamicos(data){
         }
       });
 
-      // ACTUALIZAR INPUTS EDITABLES TAMBIÉN
+      // ACTUALIZAR INPUT EDITABLE DE INGRESOS TOTALES
       const inputsEditables = rowElement.querySelectorAll('.editable-input');
       inputsEditables.forEach(inputEditable => {
         const columnaInput = inputEditable.getAttribute('data-column');
         if (columnaInput === 'Ingresos totales') {
           inputEditable.value = ingresosAjustados;
-        } else if (columnaInput === 'Salidas P1') {
-          inputEditable.value = salidasP1Ajustadas;
         }
       });
     });
